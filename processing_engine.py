@@ -1,5 +1,6 @@
 
 
+from operator import index
 import os
 from pathlib import Path
 import re
@@ -23,7 +24,23 @@ class DataProcessingEngine:
         self.output_folder = os.path.join(self.source_path, "output")
 
         # Pattern for DD-MM-YYYY
-        self.date_pattern = r"(\d{2}-\d{2}-\d{4})"
+        # self.date_pattern = r"(\d{2}-\d{2}-\d{4})"
+        self.date_pattern = r"(\d{2}[-_/]\d{2}[-_/]\d{4})"
+        self.data_count_pattern  = r"(\d{2}[-_/]\d{2}[-_/]\d{2}[-_/]\d{4})"
+
+        self.SHEET_ALIASES = {
+            "daily_variables": [
+                "daily_variables",
+                "daily variable",
+                "daily variables",
+                "daily-variables",
+            ],
+
+            "mpdm": [
+                "mpdm",
+                "MPDM"
+            ]
+        }
 
     def log(self, message):
         self.logger(message)
@@ -33,10 +50,22 @@ class DataProcessingEngine:
         if self.progress_callback:
             self.progress_callback(value)
 
+    def get_count_and_date_from_filename(self, file_name):
+        match = re.search(self.data_count_pattern, file_name)
+        if match:
+            count = match.group(1)[:2] # Extract the first two digits as data count
+            if not match.group(2):
+                date = match.group(1)[-10:]  # Extract the date part (last 10 characters)return count, date
+            else:
+                date = match.group(2)
+
+            return count, date
+        return None, None
 
     def sort_files_by_date(self, files):
         def extract_date_object(file_name):
             match = re.search(self.date_pattern, file_name)
+
             if match:
                 date_str = match.group(1)  # Extracts the date substring (e.g., "02-03-2014")
                 try:
@@ -67,18 +96,33 @@ class DataProcessingEngine:
                 # For example, you can read the file, extract data, etc.
                 # You can also update progress using self.update_progress(value)
 
-                date_str = self.get_date_str(os.path.join(self.source_path, file))
-                data_count = self.format_data_count(data_count=index+1)
+                count, date_str = self.get_count_and_date_from_filename(file)
+                if date_str:
+                    self.logger(f"📅 Extracted date from filename: {date_str}")
+                
+                if count:
+                    self.logger(f"🔢 Extracted data count from filename: {count}")
+                    data_count = count
+                    
+
+
+                if date_str is None :
+                    date_str = self.get_date_str(os.path.join(self.source_path, file))
+                
+                if count is None:
+                    data_count = self.format_data_count(data_count=index+1)
                 
                 # copy daily variables template
                 self.copy_daily_variables(os.path.join(self.source_path, file), date_str, data_count)
 
+                self.logger(f"✅ Copied daily variables for file: {file}")
+
                 # copy main template
-                instance_template = self.copy_template(self.template_path, date_str, data_count)
+                # instance_template = self.copy_template(self.template_path, date_str, data_count)
 
                 # populate productivity and MPDM sheets in the copied template
                 # source_file_path = os.path.join(self.source_path, file)
-                self.populate_productivity(os.path.join(self.source_path, file), instance_template)
+                # self.populate_productivity(os.path.join(self.source_path, file), instance_template)
                 # self.populate_mpdm(source_file_path, instance_template)
                 
 
@@ -169,56 +213,90 @@ class DataProcessingEngine:
         except Exception as e:
             self.logger(f"❌ Error populating MPDM sheet: {e}")
 
+    def get_sheet_by_flexible_name(self, wb, target_names):
+        """
+        Find sheet using flexible matching.
+        """
+
+        # normalize targets
+        normalized_targets = [
+            name.lower()
+                .replace("_", "")
+                .replace(" ", "")
+            for name in target_names
+        ]
+
+        for sheet_name in wb.sheetnames:
+
+            normalized_sheet = (
+                sheet_name.lower()
+                    .replace("_", "")
+                    .replace(" ", "")
+            )
+
+            if normalized_sheet in normalized_targets:
+                return wb[sheet_name]
+
+        return None
     def copy_daily_variables(self, file_path, date_str, data_count):
-        # daily_variables_template = os.path.join(self.template_path.parent, "daily_variables_BiT.xlsx")
-        wb = load_workbook(filename=file_path, read_only=False)
-        ws = wb['daily_variables']
-        new_wb = Workbook()
-        new_ws = new_wb.active
-        new_ws.title = "daily_variables"
-        for row in ws.iter_rows(values_only=False):
-            # Grab the matching target cell in the new sheet
-            for cell in row:
-                new_cell = new_ws.cell(row=cell.row, column=cell.column, value=cell.value)
-               
-               # deep copy structural attributes
-                if cell.has_style:
-                    new_cell.font = copy(cell.font)
-                    new_cell.border = copy(cell.border)
-                    new_cell.fill = copy(cell.fill)
-                    new_cell.number_format = cell.number_format
-                    new_cell.protection = copy(cell.protection)
-                    new_cell.alignment = copy(cell.alignment)
 
-        # 2. Copy Column Dimensions (Widths)
-        for col_letter, col_dim in ws.column_dimensions.items():
-            new_ws.column_dimensions[col_letter].width = col_dim.width
-            new_ws.column_dimensions[col_letter].hidden = col_dim.hidden
+        try:
+            # daily_variables_template = os.path.join(self.template_path.parent, "daily_variables_BiT.xlsx")
+            wb = load_workbook(filename=file_path, read_only=False)
+            ws = ws = self.get_sheet_by_flexible_name(
+                wb, 
+                self.SHEET_ALIASES["daily_variables"]
+            )
+                
+            new_wb = Workbook()
+            new_ws = new_wb.active
+            new_ws.title = "daily_variables"
+            for row in ws.iter_rows(values_only=False):
+                # Grab the matching target cell in the new sheet
+                for cell in row:
+                    new_cell = new_ws.cell(row=cell.row, column=cell.column, value=cell.value)
+                
+                # deep copy structural attributes
+                    if cell.has_style:
+                        new_cell.font = copy(cell.font)
+                        new_cell.border = copy(cell.border)
+                        new_cell.fill = copy(cell.fill)
+                        new_cell.number_format = cell.number_format
+                        new_cell.protection = copy(cell.protection)
+                        new_cell.alignment = copy(cell.alignment)
 
-        # 3. Copy Row Dimensions (Heights)
-        for row_idx, row_dim in ws.row_dimensions.items():
-            new_ws.row_dimensions[row_idx].height = row_dim.height
-            new_ws.row_dimensions[row_idx].hidden = row_dim.hidden
+            # 2. Copy Column Dimensions (Widths)
+            for col_letter, col_dim in ws.column_dimensions.items():
+                new_ws.column_dimensions[col_letter].width = col_dim.width
+                new_ws.column_dimensions[col_letter].hidden = col_dim.hidden
 
-        # 4. Copy Merged Cell Ranges (if any exist)
-        for merged_range in list(ws.merged_cells.ranges):
-            new_ws.merge_cells(str(merged_range))    
-            # new_ws.append([cell.value for cell in row])
+            # 3. Copy Row Dimensions (Heights)
+            for row_idx, row_dim in ws.row_dimensions.items():
+                new_ws.row_dimensions[row_idx].height = row_dim.height
+                new_ws.row_dimensions[row_idx].hidden = row_dim.hidden
 
-        # Finally update data count and date in the new sheet
-        new_ws['E5'] = data_count
+            # 4. Copy Merged Cell Ranges (if any exist)
+            for merged_range in list(ws.merged_cells.ranges):
+                new_ws.merge_cells(str(merged_range))    
+                # new_ws.append([cell.value for cell in row])
 
-        
-        # Save logic pipeline
-        dest_folder = os.path.join(self.source_path, "daily_variables")
-        if not os.path.exists(dest_folder):
-            os.makedirs(dest_folder)
+            # Finally update data count and date in the new sheet
+            new_ws['E5'] = data_count
+
             
-        dest_path = os.path.join(dest_folder, f"{data_count}_{date_str}_daily_variables.xlsx")
-        new_wb.save(dest_path)
-        wb.close()  # Clean up file stream locks
-        
-        self.logger(f"✅ Copied daily variables with complete styles to: {dest_path}")
+            # Save logic pipeline
+            dest_folder = os.path.join(self.source_path, "daily_variables")
+            if not os.path.exists(dest_folder):
+                os.makedirs(dest_folder)
+                
+            dest_path = os.path.join(dest_folder, f"{data_count}_{date_str}_daily_variables.xlsx")
+            new_wb.save(dest_path)
+            wb.close()  # Clean up file stream locks
+            
+            self.logger(f"✅ Copied daily variables with complete styles to: {dest_path}")
+        except Exception as e:
+            self.logger(f"❌ Parsing Error: {str(e)}")
+
 
     def copy_template(self, template_path, date_str=None, data_count="00"):  
 
@@ -259,6 +337,8 @@ class DataProcessingEngine:
             else:
                 if "/" in str(date_value):
                     return date_value.replace("/", "-")
+                if "_" in str(date_value):
+                    return date_value.replace("_", "-")
                 return date_value
 
         except Exception as e:
