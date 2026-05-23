@@ -94,7 +94,8 @@ class CMIDataProcessorGUI(QWidget):
         self.task_selector.addItems([
             "Excel File Splitting",
             "File Renaming (Date Match/G4 Extraction)",
-            "Data Aggregation & Template Counter"
+            "Data Aggregation & Template Counter",
+            "Clean Data"
         ])
         self.task_selector.currentIndexChanged.connect(self.toggle_task_inputs)
         form.addRow("Select Action Task:", self.task_selector)
@@ -121,7 +122,7 @@ class CMIDataProcessorGUI(QWidget):
 
         # Dynamic Parameters
         self.equipment = QComboBox()
-        self.equipment.addItems(["Excavator", "Dozer", "Loader", "Grader", "Roller", "Dump Truck"])
+        self.equipment.addItems(["Excavator", "Dozer", "Loader", "Grader", "Roller", "Truck", "Labor"])
         self.equipment_row_label = QLabel("Equipment Type:")
         form.addRow(self.equipment_row_label, self.equipment)
 
@@ -312,8 +313,14 @@ class CMIDataProcessorGUI(QWidget):
         self.chunk_size.setVisible(is_splitter)
         self.chunk_row_label.setVisible(is_splitter)
         is_aggregator = (task_idx == 2)
+
         self.template_widget.setVisible(is_aggregator)
         self.template_row_label.setVisible(is_aggregator)
+
+        is_cleaner = (task_idx == 3)
+        self.template_widget.setVisible(is_cleaner)
+        self.template_row_label.setVisible(is_cleaner)
+
 
     def select_input_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Source Input Directory")
@@ -323,6 +330,7 @@ class CMIDataProcessorGUI(QWidget):
             if task_idx == 0: self.output_path.setText(os.path.join(folder, "split_data_files"))
             elif task_idx == 1: self.output_path.setText(os.path.join(folder, "renamed_files"))
             elif task_idx == 2: self.output_path.setText(os.path.join(folder, "collected_data"))
+            elif task_idx == 3: self.output_path.setText(os.path.join(folder, "cleaned_data"))
 
     def select_output_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Output Target Directory")
@@ -357,6 +365,22 @@ class CMIDataProcessorGUI(QWidget):
             if not template_path or not os.path.exists(template_path): return
             from processing_engine import DataProcessingEngine
             self.engine = DataProcessingEngine(input_folder=input_folder, template_path=template_path)
+
+        elif task_idx == 3:
+            template_path = self.template_path_field.text()
+            if not template_path or not os.path.exists(template_path): return
+            from cleaning_engine import DataCleaningEngine
+            self.engine = DataCleaningEngine(
+                {
+                    'input_folder':input_folder, 
+                    'output_folder':output_folder, 
+                    'template_path':template_path, 
+                    'logger':self.log_message, 
+                    'progress_callback':self.progress.setValue
+                }
+            )
+                
+
 
         self.worker = Worker(self.engine)
         self.worker.log_signal.connect(self.log_message)
