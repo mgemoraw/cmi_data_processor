@@ -320,6 +320,8 @@ class CMIDataProcessorGUI(QWidget):
         is_cleaner = (task_idx == 3)
         self.template_widget.setVisible(is_cleaner)
         self.template_row_label.setVisible(is_cleaner)
+        self.equipment.setVisible(is_cleaner)
+        self.equipment_row_label.setVisible(is_cleaner)
 
 
     def select_input_folder(self):
