@@ -368,3 +368,5 @@ class DataProcessingEngine:
         
     def load_source_data(self, file_path):
         wb = load_workbook(filename=file_path, read_only=True)
+
+        return wb 
