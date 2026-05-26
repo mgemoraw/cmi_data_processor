@@ -8,17 +8,16 @@ import shutil
 from copy import copy 
 from openpyxl import Workbook, load_workbook
 from datetime import datetime 
-
+from mappings import COLUMN_MAPPINGS
 
 class DataProcessingEngine:
-    def __init__(self, input_folder=None, template_path=None, logger=print):
+    def __init__(self, input_folder=None, template_path=None, logger=print, equipment=None):
         self.source_path = Path(input_folder) if input_folder else Path.cwd()
         self.template_path = Path(template_path) if template_path else Path.cwd()
         self.template_mapping = {}
 
         self.logger = logger
-
-        self.logger = logger
+        self.equipment = equipment 
         self.progress_callback = None
         
         self.output_folder = os.path.join(self.source_path, "output")
@@ -82,6 +81,25 @@ class DataProcessingEngine:
         # Sort using the actual datetime object instead of a string
         return sorted(files, key=extract_date_object)
     
+    def get_equipment_config(self):
+
+        equipment = self.equipment.lower().strip()
+
+        if not equipment:
+            raise ValueError("Equipment type is empty")
+
+        if equipment not in COLUMN_MAPPINGS:
+            raise ValueError(
+                f"Unsupported equipment type: {equipment}"
+            )
+
+        return equipment, COLUMN_MAPPINGS[equipment]
+    
+    def list_excel_files(self):
+        """
+        Return all Excel files in the folder
+        """
+        return list(self.source_path.glob("*.xlsx"))
     
     def read_excel_contents(self):
         self.logger("🚀 Starting data processing...")
@@ -89,6 +107,8 @@ class DataProcessingEngine:
         self.logger(f"📂 Source folder: {self.source_path}")
         # template = self.read_template_file(self.template_path)
         files = self.sort_files_by_date(os.listdir(self.source_path))
+        total_files = self.list_excel_files()
+        
         for index, file in enumerate(files):
             if file.endswith('.xlsx') and file != self.template_path.name:
                 self.logger(f"📄 Processing file: {file}")
@@ -118,13 +138,18 @@ class DataProcessingEngine:
                 self.logger(f"✅ Copied daily variables for file: {file}")
 
                 # copy main template
-                # instance_template = self.copy_template(self.template_path, date_str, data_count)
+                instance_template = self.copy_template(self.template_path, date_str, data_count)
+
+                self.logger(f"✅ Copied template for file: {file}")
 
                 # populate productivity and MPDM sheets in the copied template
-                # source_file_path = os.path.join(self.source_path, file)
-                # self.populate_productivity(os.path.join(self.source_path, file), instance_template)
-                # self.populate_mpdm(source_file_path, instance_template)
-                
+                source_file_path = os.path.join(self.source_path, file)
+                self._populate_productivity(source_file_path, instance_template)
+                self._populate_mpdm(source_file_path, instance_template)
+
+                # update progress
+                progress = int(((index + 1) / total_files) * 100)
+                self.update_progress(progress)
 
         # For example, you can call other methods to read templates, process data, etc.
         self.logger("✅ Data processing completed!")
@@ -139,6 +164,11 @@ class DataProcessingEngine:
     def populate_productivity(self, source_file, template_path):
         try:
             source_wb = load_workbook(filename=source_file, read_only=False)
+
+            # identify_equipment type
+            if self.equipment.lower() in ['dozer']:
+                self._populate_dozer_productivity(source_file, template_path)
+
             # source_ws = source_wb[self.equipment_sheet_name]
             source_ws = source_wb['dozer']
 
@@ -152,20 +182,20 @@ class DataProcessingEngine:
             date = source_ws['A7'].value
             data_collector = source_ws['C7'].value
 
-            DOZER_COLUMN_MAPPING = {
-                'B': 'E',  # Equipment Tag (Dozer Cyle)
-                'C': 'F',  # Man power
-                'D': 'G',  # Dozer Blade Type
-                'E': 'H',  # Task Type
-                'F': 'I',  # Description
-                'G': 'J',  # Soil Type
-                'H': 'K',  # Blade Height (m)
-                'I': 'L',  # Blade Width (m)
-                'J': 'M',  # Blade Length (m)
-                'K': 'N',  # unit (m3, m, etc)
-                'L': 'O',  # Blade Load (m3, m, etc) - This will be calculated, so we can skip copying this column
-                'M': 'P',  # Cycle Time (seconds)
-                'N': 'Q',  # Productivity (m3/hr, m/hr, etc) - This will be calculated, so we can skip copying this column
+            COLUMN_MAPPINGS = {
+                'E': 'B',  # Equipment Tag (Dozer Cyle)
+                'F': 'C',  # Man power
+                'G': 'D',  # Dozer Blade Type
+                'H': 'E',  # Task Type
+                'I': 'F',  # Description
+                'J': 'G',  # Soil Type
+                'K': 'H',  # Blade Height (m)
+                'L': 'I',  # Blade Width (m)
+                'M': 'J',  # Blade Length (m)
+                'N': 'K',  # unit (m3, m, etc)
+                #'O': 'L',  # Blade Load (m3, m, etc) - This will be calculated, so we can skip copying this column
+                'P': 'M',  # Cycle Time (seconds)
+                # 'Q': 'N',  # Productivity (m3/hr, m/hr, etc) - This will be calculated, so we can skip copying this column
             }
             source_start_row = 7  # Assuming the first row is headers
             dest_start_row = 11  # Assuming the first row is headers
@@ -175,41 +205,178 @@ class DataProcessingEngine:
             new_ws['D6'] = project_code
             new_ws['I6'] = number_of_equipment_types
             new_ws['L6'] = date.strftime("%d-%m-%Y") if hasattr(date, "strftime") else date
-            new_ws['O6'] = data_collector
+            new_ws['O6'] = "Data Collector"
+            new_ws['P6'] = data_collector
 
             
             # calculate how many rows down the data offset needs to shift
             row_offset = dest_start_row - source_start_row
 
-            for row in source_ws.iter_rows(min_row=source_start_row, values_only=False):
-                self.logger(f"Processing row {row[0].row} with values: {[cell.value for cell in row]}")
-                for cell in row:
-                    
-                    if cell.coordinate in DOZER_COLUMN_MAPPING.keys():
-                        self.logger(f"Processing cell {cell.coordinate} with value: {cell.value}")
-                        # dest_cell = DOZER_COLUMN_MAPPING[cell.coordinate[0]] + str(cell.row[0] + row_offset)
-                        dest_cell= DOZER_COLUMN_MAPPING[cell.column_letter] 
-                        self.logger(f"Mapping source cell {cell.coordinate} to destination cell {dest_cell}{cell.row}+ {row_offset}")
-                        new_cell = new_ws[dest_cell + str(cell.row + row_offset)]
-                        new_ws[f"E{row[0].row + row_offset}"] = "Zoned Rock Fill dam shell at the flnaks"  # Copy Equipment Tag to column E in the new sheet
-                        new_cell.value = cell.value 
+            for row in range(source_start_row, source_ws.max_row + 1):
+
+                source_value = source_ws[f"P{row}"].value
+
+                # Optional skip empty rows
+                if source_value is None:
+                    continue
+
+                target_row = row + row_offset
+
+                self.logger(
+                    f"Processing MPDM row {row}: {source_value}"
+                )
+
+                for source_col, target_col in COLUMN_MAPPINGS.items():
+
+                    new_ws[f"{target_col}{target_row}"] = (
+                        source_ws[f"{source_col}{row}"].value
+                    )
+
+            # new_wb.save(template_path)
+
+            self.logger(
+                f"✅ Updated Productivity sheet in: {template_path}"
+            ) 
            
             dest_path = os.path.join(self.output_folder, os.path.basename(template_path))
-            new_wb.save(template_path)
-            self.logger(f"✅ Updated productivity sheet in: {template_path}")
+            new_wb.save(dest_path)
+            self.logger(f"✅ Updated productivity sheet in: {dest_path}")
             source_wb.close()
         except Exception as e:
             self.logger(f"❌ Error populating productivity sheet: {e}")
 
-    def populate_mpdm(self, file_path, template_path):
+    def populate_mpdm(self, source_file_path, template_path):
         try:
-            wb = load_workbook(filename=file_path, read_only=False)
+            wb = load_workbook(filename=source_file_path, read_only=False)
             ws = wb['mpdm']
             ws['B2'] = "Sample MPDM Data"
-            dest_path = os.path.join(self.output_folder, os.path.basename(template_path))
-            wb.save(dest_path)
-            self.logger(f"✅ Updated MPDM sheet in: {dest_path}")
+
+            # dest_path = os.path.join(self.output_folder, os.path.basename(template_path))
+            template_wb = load_workbook(filename=template_path, read_only=False)
+            template_ws = template_wb['MPDM 1']
+            template_start_row = 13
+            source_start_row = 7
+
+            for row in ws.iter_rows(min_row=7, max_row=ws.max_row, min_col=8, max_col=ws.max_column, values_only=False):
+                # Grab the matching target cell in the new sheet
+                source_cell = row[0].row 
+                row_diff = template_start_row - source_start_row
+                
+                self.logger(f"Processing MPDM row {source_cell} with values: {ws['H'+str(source_cell)].value}")
+                template_ws[f'B{row[0].row + row_diff}'] = ws[f"H{row[0].row}"].value 
+                template_ws[f'V{row[0].row + row_diff}'] = ws[f"I{row[0].row}"].value 
+                template_ws[f'W{row[0].row + row_diff}'] = ws[f"J{row[0].row}"].value 
+                template_ws[f'X{row[0].row + row_diff}'] = ws[f"K{row[0].row}"].value 
+                template_ws[f'Y{row[0].row + row_diff}'] = ws[f"L{row[0].row}"].value 
+                template_ws[f'Z{row[0].row + row_diff}'] = ws[f"M{row[0].row}"].value 
+                template_ws[f'AA{row[0].row + row_diff}'] = ws[f"N{row[0].row}"].value 
+
+                # for cell in row:
+                #     dest_cell = template_ws.cell(row=cell.row, column=cell.column)
+                #     dest_cell.value = cell.value
+                    
+            # template_ws['N2'] = "Sample MPDM Data"
+            template_wb.save(template_path)
+            self.logger(f"✅ Updated MPDM sheet in: {template_path}")
             wb.close()
+        except Exception as e:
+            self.logger(f"❌ Error populating MPDM sheet: {e}")
+
+    def _populate_productivity(self, source_file_path, template_path):
+        try:
+            # Identify equipment here
+            equipment, config = self.get_equipment_config()
+
+            source_wb = load_workbook(source_file_path)
+            template_wb = load_workbook(template_path)
+
+            source_ws = source_wb[
+                config["source_sheet"]
+            ]
+
+            template_ws = template_wb[
+                config["destination_sheet"]
+            ]
+
+            source_start_row = config["source_start_row"]
+
+            dest_start_row = config["dest_start_row"]
+
+            row_offset = (dest_start_row - source_start_row)
+
+            column_mappings = config["column_mappings"]
+
+
+            for row in range(source_start_row, source_ws.max_row + 1):
+                target_row = row + row_offset
+                for source_col, dest_col in column_mappings.items():
+                    template_ws[f"{dest_col}{target_row}"] = source_ws[f"{source_col}{row}"].value
+
+                template_wb.save(template_path)
+
+            self.logger(
+                f"✅ Successfully populated {equipment}"
+            )
+
+            source_wb.close()
+            template_wb.close()
+
+        except Exception as e:
+            self.logger(f"❌ Error populating productivity: {e}")
+
+
+    def _populate_mpdm(self, source_file_path, template_path):
+        try:
+            source_wb = load_workbook(source_file_path)
+            source_ws = source_wb["mpdm"]
+
+            template_wb = load_workbook(template_path)
+            template_ws = template_wb["MPDM 1"]
+
+            source_start_row = 7
+            template_start_row = 13
+            row_offset = template_start_row - source_start_row
+
+            # Source -> Destination mapping
+            column_mapping = {
+                "H": "B",
+                "I": "V",
+                "J": "W",
+                "K": "X",
+                "L": "Y",
+                "M": "Z",
+                "N": "AA",
+            }
+
+            for row in range(source_start_row, source_ws.max_row + 1):
+
+                source_value = source_ws[f"H{row}"].value
+
+                # Optional skip empty rows
+                if source_value is None:
+                    continue
+
+                target_row = row + row_offset
+
+                # self.logger(
+                #     f"Processing MPDM row {row}: {source_value}"
+                # )
+
+                for source_col, target_col in column_mapping.items():
+
+                    template_ws[f"{target_col}{target_row}"] = (
+                        source_ws[f"{source_col}{row}"].value
+                    )
+
+            template_wb.save(template_path)
+
+            self.logger(
+                f"✅ Updated MPDM sheet in: {template_path}"
+            )
+
+            source_wb.close()
+            template_wb.close()
+
         except Exception as e:
             self.logger(f"❌ Error populating MPDM sheet: {e}")
 

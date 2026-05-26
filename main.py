@@ -307,21 +307,40 @@ class CMIDataProcessorGUI(QWidget):
 
     def toggle_task_inputs(self):
         task_idx = self.task_selector.currentIndex()
-        is_splitter = (task_idx == 0)
-        self.equipment.setVisible(is_splitter)
-        self.equipment_row_label.setVisible(is_splitter)
+
+        # Visibility flags
+        is_splitter = task_idx == 0
+        is_cleaner = task_idx == 3
+        needs_template = task_idx in [2, 3]
+        needs_equipment = task_idx in [0, 2, 3]
+
+        # Equipment
+        self.equipment.setVisible(needs_equipment)
+        self.equipment_row_label.setVisible(needs_equipment)
+
+        # Chunk size
         self.chunk_size.setVisible(is_splitter)
         self.chunk_row_label.setVisible(is_splitter)
-        is_aggregator = (task_idx == 2)
 
-        self.template_widget.setVisible(is_aggregator)
-        self.template_row_label.setVisible(is_aggregator)
+        # Template
+        self.template_widget.setVisible(needs_template)
+        self.template_row_label.setVisible(needs_template) 
 
-        is_cleaner = (task_idx == 3)
-        self.template_widget.setVisible(is_cleaner)
-        self.template_row_label.setVisible(is_cleaner)
-        self.equipment.setVisible(is_cleaner)
-        self.equipment_row_label.setVisible(is_cleaner)
+        # is_splitter = (task_idx == 0)
+        # self.equipment.setVisible(is_splitter)
+        # self.equipment_row_label.setVisible(is_splitter)
+        # self.chunk_size.setVisible(is_splitter)
+        # self.chunk_row_label.setVisible(is_splitter)
+
+        # is_aggregator = (task_idx == 2)
+        # self.template_widget.setVisible(is_aggregator)
+        # self.template_row_label.setVisible(is_aggregator)
+
+        # is_cleaner = (task_idx == 3)
+        # self.template_widget.setVisible(is_cleaner)
+        # self.template_row_label.setVisible(is_cleaner)
+        # self.equipment.setVisible(is_cleaner)
+        # self.equipment_row_label.setVisible(is_cleaner)
 
 
     def select_input_folder(self):
@@ -365,8 +384,13 @@ class CMIDataProcessorGUI(QWidget):
         elif task_idx == 2:
             template_path = self.template_path_field.text()
             if not template_path or not os.path.exists(template_path): return
+
             from processing_engine import DataProcessingEngine
-            self.engine = DataProcessingEngine(input_folder=input_folder, template_path=template_path)
+            self.engine = DataProcessingEngine(
+                input_folder=input_folder, 
+                template_path=template_path, 
+                equipment=self.equipment.currentText().lower(),
+            )
 
         elif task_idx == 3:
             template_path = self.template_path_field.text()
