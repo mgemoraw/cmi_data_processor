@@ -8,7 +8,9 @@ from pathlib import Path
 import re 
 import shutil
 import random
+import sys
 
+sys.stdout.reconfigure(encoding='utf-8')
 
 class DataCleaningEngine:
     SHEET_ALIASES = {
@@ -113,7 +115,7 @@ class DataCleaningEngine:
         pass 
     
     def _clean_dozer_records(self, worksheet):
-        pass 
+        self._clean_blanks(worksheet) 
 
     def _clean_excavator_records(self, worksheet):
         pass 
@@ -133,6 +135,7 @@ class DataCleaningEngine:
     
     def _clean_roller_records(self, worksheet):
         pass 
+
     def _clean_grader_records(self, worksheet):
         pass 
 
@@ -211,13 +214,23 @@ class DataCleaningEngine:
         for index, file in enumerate(os.listdir(self.source_path)):
             self.logger(f"... Processing file: {file}")
 
+    def _clean_blanks(self, ws):
+        # ws = workbook['dozer']
+        date = ws['A7'].value
+        project_code = ws['B7'].value
+        data_collector = ws['C7'].value
+        number_of_equipment_types = ws['D7'].value
+
+        self.logger(f"Date: {date}\n Project Code: {project_code}\n DataCollector: {data_collector}\n Number of Equipment Types: {number_of_equipment_types}")
+
+
 
 
 
 if __name__ == "__main__":
     cleaner = DataCleaningEngine(
         input_folder="input_folder/", 
-        template_path="templates/1.2. Dozer _ Template_2026_05_01_BiT.xlsx", 
+        template_path="forms/Dozer-Template.xlsx", 
         equipment="Dozer",
     )
 
