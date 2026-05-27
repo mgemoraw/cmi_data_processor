@@ -314,6 +314,8 @@ class DataProcessingEngine:
 
                 template_wb.save(template_path)
 
+            if "meta_data" in config["header"]:
+                pass
             self.logger(
                 f"✅ Successfully populated {equipment}"
             )
