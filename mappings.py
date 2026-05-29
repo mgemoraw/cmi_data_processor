@@ -1,5 +1,29 @@
 
 COLUMN_MAPPINGS = {
+    "truck": {
+        "source_sheet": "truck",
+        "destination_sheet": "Truck",
+        "source_start_row": 7,
+        "dest_start_row": 11,
+        "date_field": "A7",
+        'project_code': "B7",
+        'number_of_equipment_types': "D7",
+        'data_collector': "C7",
+        
+        "column_mappings": {
+            "E": "B",  # Equipment Tag
+            "F": "C",  # Man power
+            "G": "D",  # Truck Plate or Tag
+            "H": "E",  # Task Type
+            "I": "F",  # Description
+            "J": "G",  # Soil Type
+            "P": "L",  # Unit
+            "O": "N",  # Total Cycle Time
+            "Q": "M",  # Q Actual Bucket capacity
+        }
+
+    },
+
     "dozer": {
         "source_sheet": "dozer",
         "destination_sheet": "Dozer",
