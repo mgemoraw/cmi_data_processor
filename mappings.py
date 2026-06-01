@@ -5,11 +5,14 @@ COLUMN_MAPPINGS = {
         "destination_sheet": "Truck",
         "source_start_row": 7,
         "dest_start_row": 11,
-        "date_field": "A7",
-        'project_code': "B7",
-        'number_of_equipment_types': "D7",
-        'data_collector': "C7",
-        
+
+        "header_mappings": {
+            "date": "A7",
+            "project_code": "B7",
+            "data_collector": "C7",
+            "number_of_equipment_types": "D7",
+        },
+
         "column_mappings": {
             "E": "B",  # Equipment Tag
             "F": "C",  # Man power
@@ -30,6 +33,14 @@ COLUMN_MAPPINGS = {
 
         "source_start_row": 7,
         "dest_start_row": 11,
+
+        "header_mappings": {
+            "date": "A7",
+            "project_code": "B7",
+            "data_collector": "C7",
+            "number_of_equipment_types": "D7",
+        },
+
 
         "column_mappings": {
             'E': 'B',  # Equipment Tag (Dozer Cyle)
@@ -56,9 +67,16 @@ COLUMN_MAPPINGS = {
     "excavator": {
         "source_sheet": "excavator",
         "destination_sheet": "Excavator",
-
         "source_start_row": 7,
         "dest_start_row": 11,
+
+        "header_mappings": {
+            "date": "A7",
+            "project_code": "B7",
+            "data_collector": "C7",
+            "number_of_equipment_types": "D7",
+        },
+
 
         "column_mappings": {
             'E': 'B',  # Equipment Tag (Dozer Cyle)

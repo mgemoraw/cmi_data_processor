@@ -148,7 +148,7 @@ class DataProcessingEngine:
                 self._populate_mpdm(source_file_path, instance_template)
 
                 # update progress
-                progress = int(((index + 1) / total_files) * 100)
+                progress = int(((index + 1) / len(total_files)) * 100)
                 self.update_progress(progress)
 
         # For example, you can call other methods to read templates, process data, etc.
@@ -306,6 +306,8 @@ class DataProcessingEngine:
 
             column_mappings = config["column_mappings"]
 
+            self._copy_header_data(source_ws, template_ws, config)
+
 
             for row in range(source_start_row, source_ws.max_row + 1):
                 target_row = row + row_offset
@@ -314,17 +316,36 @@ class DataProcessingEngine:
 
                 template_wb.save(template_path)
 
-            if "meta_data" in config["header"]:
-                pass
+            # if "meta_data" in config["header_mappings"]:
+            #     pass
             self.logger(
                 f"✅ Successfully populated {equipment}"
             )
 
             source_wb.close()
             template_wb.close()
+       
 
         except Exception as e:
             self.logger(f"❌ Error populating productivity: {e}")
+
+    def _copy_header_data(self, source_ws, template_ws, config):
+        header_config = config.get("header_mappings", {})
+        if not header_config:
+            return 
+
+        date = header_config.get("date")
+        project_code = header_config.get("project_code")
+        data_collector = header_config.get("data_collector")
+        number_of_equipment_types = header_config.get("number_of_equipment_types")
+        if date:
+            template_ws['L6'] = source_ws[date].value
+        if project_code:
+            template_ws['M6'] = source_ws[project_code].value
+        if data_collector:
+            template_ws['N6'] = source_ws[data_collector].value
+        if number_of_equipment_types:
+            template_ws['O6'] = source_ws[number_of_equipment_types].value
 
 
     def _populate_mpdm(self, source_file_path, template_path):
