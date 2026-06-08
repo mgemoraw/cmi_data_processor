@@ -95,7 +95,9 @@ class CMIDataProcessorGUI(QWidget):
             "Excel File Splitting",
             "File Renaming (Date Match/G4 Extraction)",
             "Data Aggregation & Template Counter",
-            "Clean Data"
+            "Clean Data",
+            "Data Analysis Engine",
+            "Auto-ill Empty Row Cells",
         ])
         self.task_selector.currentIndexChanged.connect(self.toggle_task_inputs)
         form.addRow("Select Action Task:", self.task_selector)
@@ -144,6 +146,17 @@ class CMIDataProcessorGUI(QWidget):
         
         self.template_row_label = QLabel("Template File:")
         form.addRow(self.template_row_label, self.template_widget)
+
+        # Particular and Activity Inputs (Added for Data Analysis Engine)
+        self.particular_field = QLineEdit()
+        self.particular_field.setPlaceholderText("e.g., Site Clearing using Dozer")
+        self.particular_row_label = QLabel("Particular:")
+        form.addRow(self.particular_row_label, self.particular_field)
+
+        self.activity_field = QLineEdit()
+        self.activity_field.setPlaceholderText("e.g., Site clearing operations")
+        self.activity_row_label = QLabel("Activity:")
+        form.addRow(self.activity_row_label, self.activity_field)
 
         left_layout.addLayout(form)
 
@@ -310,9 +323,11 @@ class CMIDataProcessorGUI(QWidget):
 
         # Visibility flags
         is_splitter = task_idx == 0
+        is_analysis = task_idx == 4
+        is_row_fill = task_idx == 5
         is_cleaner = task_idx == 3
         needs_template = task_idx in [2, 3]
-        needs_equipment = task_idx in [0, 2, 3]
+        needs_equipment = task_idx in [0, 2, 3, 4]
 
         # Equipment
         self.equipment.setVisible(needs_equipment)
@@ -325,6 +340,13 @@ class CMIDataProcessorGUI(QWidget):
         # Template
         self.template_widget.setVisible(needs_template)
         self.template_row_label.setVisible(needs_template) 
+
+        # Particular
+        self.particular_field.setVisible(is_analysis)
+        self.particular_row_label.setVisible(is_analysis)
+
+        self.activity_field.setVisible(is_analysis)
+        self.activity_row_label.setVisible(is_analysis)
 
         # is_splitter = (task_idx == 0)
         # self.equipment.setVisible(is_splitter)
@@ -352,6 +374,9 @@ class CMIDataProcessorGUI(QWidget):
             elif task_idx == 1: self.output_path.setText(os.path.join(folder, "renamed_files"))
             elif task_idx == 2: self.output_path.setText(os.path.join(folder, "collected_data"))
             elif task_idx == 3: self.output_path.setText(os.path.join(folder, "cleaned_data"))
+            elif task_idx == 4: self.output_path.setText(os.path.join(folder, "analysis_output"))
+            elif task_idx == 5: self.output_path.setText(os.path.join(folder, "filled_data"))
+
 
     def select_output_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Output Target Directory")
@@ -406,6 +431,31 @@ class CMIDataProcessorGUI(QWidget):
                 }
             )
                 
+        elif task_idx == 4:
+            equip_name = self.equipment.currentText()
+            # Capture dynamic textual inputs directly from the newly provided fields
+            user_particular = self.particular_field.text().strip()
+            user_activity = self.activity_field.text().strip()
+            
+            from analysis_engine import AnalysisEngine
+
+            self.engine = AnalysisEngine(
+                data_folder=input_folder,
+                template_path=None,
+                equipment=equip_name,
+                particular=user_particular if user_particular else f"Site Clearing using Dozer {equip_name}",
+                activity=user_activity if user_activity else f"Site clearing using {equip_name}"
+            )
+
+        elif task_idx == 5:
+            # Safe decoupled import structure matching your design layout architecture
+            # assumes row_fill_engine.py is in the working path
+            from row_fill_engine import RowFillEngine 
+            self.engine = RowFillEngine(
+                input_folder=input_folder,
+                logger=self.log_message,
+                progress_callback=self.progress.setValue
+            )
 
 
         self.worker = Worker(self.engine)

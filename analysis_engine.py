@@ -93,11 +93,20 @@ class OutputData:
     overall_method_productivity: float
     ideal_cycle_variability: float
     overall_cycle_variability: float
+    data_count: str = None
 
     HEADERS = [
-        "Day", "Date", "Operation/Activity", "Equipment Type", "Description Work",
-        "Productivity (Units/hr)", "Ideal Productivity (Unit/hr)", 
-        "Overall Method Productivity (Unit/hr)", "Ideal Cycle Variability (%)", "Overall Cycle Variability (%)"
+        "Day", 
+        "Date", 
+        "Operation/Activity", 
+        "Equipment Type", 
+        "Description Work",
+        "Productivity (Units/hr)", 
+        "Ideal Productivity (Unit/hr)", 
+        "Overall Method Productivity (Unit/hr)", 
+        "Ideal Cycle Variability (%)", 
+        "Overall Cycle Variability (%)",
+        "Data Source"
     ]
 
     @classmethod
@@ -105,7 +114,7 @@ class OutputData:
         for col, header in enumerate(cls.HEADERS, start=1):
             ws.cell(row=row, column=col, value=header)
 
-    def write_row(self, ws, row):
+    def write_row(self, ws, row, data_count=None):
         values = [
             self.day, 
             self.date, 
@@ -116,7 +125,8 @@ class OutputData:
             self.ideal_productivity, 
             self.overall_method_productivity,
             self.ideal_cycle_variability, 
-            self.overall_cycle_variability
+            self.overall_cycle_variability,
+            data_count,
         ]
         for col, value in enumerate(values, start=1):
             ws.cell(row=row, column=col, value=value)
@@ -195,6 +205,15 @@ class AnalysisEngine:
                     continue
                     
                 ws = wb[sheet_name]
+                
+                # source target data  row
+                start_row = 11
+
+                pr_col = self.get_target_cells()['productivity']
+                ideal_col = self.get_target_cells()['ideal_productivity']
+                overall_col = self.get_target_cells()['overall_method_productivity']
+                ideal_cycle_col = self.get_target_cells()['ideal_cycle_variability']
+                overall_cycle_col = self.get_target_cells()['overall_cycle_variability']
 
                 data = OutputData(
                     day=str(index + 1),
@@ -202,14 +221,14 @@ class AnalysisEngine:
                     operation_activity=self.activity,
                     equipment_type=self.equipment,
                     description_work=self.particular,
-                    productivity=ws["N11"].value, 
-                    ideal_productivity=ws["O11"].value,
-                    overall_method_productivity=ws["P11"].value,
-                    ideal_cycle_variability=ws["Q11"].value,
-                    overall_cycle_variability=ws["R11"].value,
+                    productivity=self.extract_average_productivity(wb, ws, pr_col),
+                    ideal_productivity=ws[f'{ideal_col}{start_row}'].value,
+                    overall_method_productivity=ws[f'{overall_col}{start_row}'].value,
+                    ideal_cycle_variability=ws[f"{ideal_cycle_col}{start_row}"].value,
+                    overall_cycle_variability=ws[f'{overall_cycle_col}{start_row}'].value,
                 )
-
-                data.write_row(new_ws, current_row)
+                data_count=self.extract_data_count(file)
+                data.write_row(new_ws, current_row, data_count=data_count)
                 current_row += 1
                 self._log(f"✅ Extracted Row Stats successfully from: {file}")
             except Exception as ex:
@@ -223,25 +242,104 @@ class AnalysisEngine:
         self._log(f"💾 Aggregated Summary Report saved successfully to directory file location: {output_file}")
         return True
     
+    def get_target_cells(self):
+        if self.equipment.lower() == 'dozer':
+            return {
+                'productivity': "N",
+                'ideal_productivity': "O",
+                'overall_method_productivity' :"P",
+                'ideal_cycle_variability': "Q",
+                'overall_cycle_variability': "R",
+            }
+        elif self.equipment.lower() == 'excavator':
+            return {
+                'productivity': "O",
+                'ideal_productivity': "P",
+                'overall_method_productivity' :"Q",
+                'ideal_cycle_variability': "R",
+                'overall_cycle_variability': "S",
+            }
+        else:
+            return {}
+
+
+    def extract_data_count(self, file):
+        name = Path(file).stem
+
+        return name
+    
     def extract_date(self, ws):
         l6 = ws["L6"].value 
         m6 = ws["M6"].value
         n6 = ws["N6"].value
+        o6 = ws["O6"].value
 
         # Case 1: Split entries (Day in L6, Month in M6, Year in N6)
-        if m6 is not None and n6 is not None:
+        if (m6 is not None and n6 is not None) and self.equipment.lower() == 'dozer':
             # e.g., "05/12/2026" or "5-December-2026"
             return f"{l6}/{m6}/{n6}"
         
+        elif (n6 is not None and o6 is not None) and self.equipment.lower() in ['excavator', 'truck']:
+            # e.g., "05/12/2026" or "5-December-2026"
+            return f"{m6}/{n6}/{o6}"
+        
         # Case 2: Merged cells (L6 holds the full date value, M6 & N6 are None)
-        elif l6 is not None:
+        elif l6 is not None and self.equipment.lower() == 'dozer':
             # If Excel already parsed it as a datetime object, format it nicely
             if hasattr(l6, "strftime"):
                 return l6.strftime("%Y-%m-%d")
             return str(l6)
         
+        elif m6 is not None and self.equipment.lower() in ['excavator', 'truck']:
+            # If Excel already parsed it as a datetime object, format it nicely
+            if hasattr(m6, "strftime"):
+                return m6.strftime("%Y-%m-%d")
+            return str(m6)
+        
         # Case 3: Completely empty fallback
         return "N/A"
+    
+    def update_template_formulas(self, file):
+        pass
+
+    def extract_average_productivity(self, source_wb, source_ws, source_column='N'):
+        # file = Path(file)
+        # wb = load_workbook(file)
+        # equipment_ws = None
+        # for sheetname in  wb.sheetnames:
+        #     if sheetname.lower().startswith(self.equipment.lower()):
+        #         equipment_ws = wb[sheetname]
+        #         break
+        # equipment_ws['N111']
+
+        # if  source_ws not in source_wb.sheetnames:
+        #     self._log(f"❌ Sheet '{source_ws}' not found in {source_wb}")
+        #     source_wb.close()
+        #     return 0
+        
+        data = []
+        for row in range(11, 112):
+            cell_value = source_ws[f'{source_column}{row}'].value
+            # if cell_value is not None:
+            try:
+                data.append(float(cell_value))
+            except (ValueError, TypeError):
+                # Ignore text rows
+                continue
+        source_wb.close()  # free up system memory early
+
+
+        # calculate the average safely
+        if not data:
+            print("⚠️ No numeric values found in range N11:N111. Average cannot be computed.")
+            calculated_average = "N/A"
+        else:
+            calculated_average = sum(data) / len(data)
+
+        return calculated_average
+
+
+
 
 
 # =====================================================================

@@ -84,13 +84,13 @@ class DataCleaningEngine:
         self.logger(f"Sheets names found: {sheetnames}")
 
         if self.equipment is not None:
-            self.equipment = self.equipment.lower()
+            equipment = self.equipment.lower()
         
 
         new_wb = self._copy_template(template_path=self.template_path)
 
-        if self.equipment in sheetnames:
-            equipment_ws = source_wb[self.equipment]
+        if equipment in sheetnames:
+            equipment_ws = source_wb[equipment]
 
             self.equipment_handlers = {
                 "dozer": self._clean_dozer_records,
@@ -99,7 +99,7 @@ class DataCleaningEngine:
                 "roller": self._clean_roller_records,
             }
 
-            handler = self.equipment_handlers.get(self.equipment)
+            handler = self.equipment_handlers.get(equipment)
 
             if handler:
                 handler(equipment_ws)
