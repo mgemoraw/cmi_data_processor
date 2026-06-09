@@ -135,7 +135,7 @@ class OutputData:
 class AnalysisEngine:
     def __init__(self, data_folder, template_path=None, equipment=None, particular=None, activity=None, logger=None, progress_callback=None):
         self.source_folder = Path(data_folder)
-        self.output_folder = self.source_folder / "output"
+        self.output_folder = self.source_folder 
         self.template_path = Path(template_path) if template_path else None
         self.equipment = equipment
         self.particular = particular if particular else f"{equipment} Work Description"
@@ -237,7 +237,7 @@ class AnalysisEngine:
             # Update Progress Bar UI Component safely
             self._set_progress(int(((index + 1) / total_files) * 100))
 
-        output_file = os.path.join(self.output_folder, f"{self.activity}.xlsx")
+        output_file = os.path.join(self.output_folder, "Equipment_Productivity.xlsx")
         new_wb.save(output_file)
         self._log(f"💾 Aggregated Summary Report saved successfully to directory file location: {output_file}")
         return True
