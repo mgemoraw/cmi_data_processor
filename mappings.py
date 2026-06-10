@@ -1,5 +1,12 @@
 
 COLUMN_MAPPINGS = {
+    "mpdm": {
+        "source_sheet": "mpdm",
+        "destination_sheet": "MPDM",
+        "source_start_row": 7,
+        "dest_start_row": 13,
+    },
+    
     "truck": {
         "source_sheet": "truck",
         "destination_sheet": "Truck",
