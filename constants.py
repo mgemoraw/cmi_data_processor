@@ -126,9 +126,12 @@ FILL_FACTOR_TABLE = {
 }
 
 SOIL_VOLUME_CORRECTION = {
-    "common": 1.00,
-    "rock": 0.85,
-    "wet": 0.90,
-    "clay": 0.95,
-    "sand": 1.10
+   "clay" : 0.74,
+   "earth": 0.80,
+   "earth and gravel": 0.83,
+   "gravel": 0.89,
+   "limestone": .63,
+   "rock": 0.63,
+   "sand": 0.87,
+   "shale": 0.71
 }

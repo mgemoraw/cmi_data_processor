@@ -461,7 +461,7 @@ class EquipmentProductivity:
 			"unit_of_time": "Seconds",
 		}
 
-		# record_ddate = header_data.get('date')
+		# record_date = header_data.get('date')
 		# operation = header_data.get("operation")
 		# equipments = header_data.get("equipments")
 		# unit_of_time = "Seconds"

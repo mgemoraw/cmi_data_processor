@@ -9,6 +9,7 @@ from copy import copy
 from openpyxl import Workbook, load_workbook
 from datetime import datetime 
 from mappings import COLUMN_MAPPINGS
+from soil_resolver import get_fill_factor, get_volume_correction, resolve_soil_type
 
 class DataProcessingEngine:
     def __init__(self, input_folder=None, template_path=None, logger=print, equipment=None, operation=None):
@@ -72,10 +73,11 @@ class DataProcessingEngine:
                 return datetime.strptime(date_str, "%d-%m-%Y")
             except ValueError:
                 # Handle cases where the regex matches a string that isn't a valid calendar date
-                return datetime.max
+                # return datetime.max
+                return None
         
         # If no date pattern is found, return datetime.max to safely push the file to the end of the list
-        return datetime.max
+        return None
 
     def _get_number_of_equipment_types(self, file_name):
         pass 
@@ -162,7 +164,8 @@ class DataProcessingEngine:
                 self.logger(f"✅ Copied template for file: {file}")
 
                 # extract date object from file 
-                record_date = self._extract_date(file_name=file)
+                # record_date = self._extract_date(file_name=file)
+                record_date = date_str
                 
                 # extract equipment types
                 equipment_types = self._get_number_of_equipment_types(file)
@@ -307,6 +310,14 @@ class DataProcessingEngine:
         except Exception as e:
             self.logger(f"❌ Error populating MPDM sheet: {e}")
 
+    def _get_asd(self, swing_angle):
+        from constants import SHOVEL_PRODUCTION_FACTORS
+        
+        if swing_angle in SHOVEL_PRODUCTION_FACTORS.get(80):
+            return SHOVEL_PRODUCTION_FACTORS[80][swing_angle]
+        return SHOVEL_PRODUCTION_FACTORS['default']
+    
+
     def _populate_productivity(self, source_file_path, template_path):
         try:
             # Identify equipment here
@@ -331,15 +342,65 @@ class DataProcessingEngine:
 
             column_mappings = config["column_mappings"]
 
+            record_date = self._extract_date(file_name=source_file_path)
+
+            if record_date:
+                config['header_mappings']['date'] = record_date.strftime("%d-%m-%Y")
+
+
+
             self._copy_header_data(source_ws, template_ws, config)
 
 
             for row in range(source_start_row, source_ws.max_row + 1):
                 target_row = row + row_offset
                 for source_col, dest_col in column_mappings.items():
-                    template_ws[f"{dest_col}{target_row}"] = source_ws[f"{source_col}{row}"].value
+                   
+                    # check if column is custom field
+                    custom_columns = config.get("custom_columns")
+                    if custom_columns and dest_col in custom_columns:
+                    # if dest_col in ['H', 'I', 'J', 'K']:
+                        # swing_angle = source_ws[f"{source_col}{row}"].value
+                        # dest_col[f'{dest_col}{target_row}'] = 
+                        match dest_col:
+                            case 'H':
+                                # Bucket fill factor
+                                soil = source_ws[f"J{row}"].value
+                                resolved_soil = resolve_soil_type(soil)
+                                fill_factor = get_fill_factor(resolved_soil)
+
+                                self.logger(f"...Updating Bucket fill factor {dest_col}{row} >> {fill_factor}")
+
+                                template_ws[f"{dest_col}{target_row}"] = fill_factor.get("fill_factor")
+                            case 'I':
+                                # angle of swing 
+                                swing_angle = source_ws[f"{source_col}{row}"].value
+                                depth = source_ws[f"M{row}"].value
+                                asd = self._get_asd(swing_angle)
+
+                                self.logger(f"...Updating AS:D {dest_col}{row} >> {asd} ")
+
+                                template_ws[f"{dest_col}{target_row}"] = asd
+                            case 'J':
+                                # Volume correction
+                                raw_soil = source_ws[f"J{row}"].value
+                                volume_correction = get_volume_correction(raw_soil)
+                                
+                                self.logger(f"...Updating Volume correction {dest_col}{row} >> {volume_correction} ")
+                                
+                                template_ws[f"{dest_col}{target_row}"] = volume_correction
+                                
+                            case 'K':
+                                # Efficiency
+                                self.logger(f"...Updating Efficiency {dest_col}{row} >> {60} ")
+                                template_ws[f"{dest_col}{target_row}"] = 60
+
+                    else:
+                        template_ws[f"{dest_col}{target_row}"] = source_ws[f"{source_col}{row}"].value                          
 
                 template_wb.save(template_path)
+
+
 
             # if "meta_data" in config["header_mappings"]:
             #     pass
@@ -357,10 +418,11 @@ class DataProcessingEngine:
     
     def _copy_header_data(self, source_ws, template_ws, config):
         header_config = config.get("header_mappings", {})
+        dest_header_cells = config.get("dest_column_mappings", None)
         if not header_config:
             return 
 
-        date = header_config.get("date")
+        date = header_config.get("date") 
         project_code = header_config.get("project_code")
         data_collector = header_config.get("data_collector")
         number_of_equipment_types = header_config.get("number_of_equipment_types")

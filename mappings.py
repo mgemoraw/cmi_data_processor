@@ -84,6 +84,15 @@ COLUMN_MAPPINGS = {
             "number_of_equipment_types": "D7",
         },
 
+        "dest_header_mappings": {
+            "equipment_date": "M6",
+            "project_code": "C6",
+            # "data_collector": "C7",
+            "number_of_equipment_types": "J6",
+            "operation": "87",
+            "equipment_type": "B9",
+            "mpdm_date": "G6",
+        },
 
         "column_mappings": {
             'E': 'B',  # Equipment Tag (Dozer Cyle)
@@ -93,14 +102,18 @@ COLUMN_MAPPINGS = {
             'I': 'F',  # Description
             'J': 'G',  # Soil Type
             'K': 'H',  # Bucket Fill factor
-            #'L': 'I',  # Angle of swing
-            #'M': 'I',  # Depth of Cut
+            'L': 'I',  # Angle of swing
+            # 'M': 'I',  # Depth of Cut
             'N': 'J',   # Volume Correction
             'O': 'K',  # Efficiency (60m/60m)
             'P': 'L',  # unit (m3, m, etc)
             'Q': 'M',  # Q Heaped Bucket capacity(m3, m, etc) - 
             'R': 'N',  # Cycle Time (seconds)
         },
+
+        "custom_columns": [
+            "H","I", "J", "K"
+        ],
         "custom_fields": {
             "swing_ratio": {
                 "source_angle_col": "L",
