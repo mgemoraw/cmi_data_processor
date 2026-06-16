@@ -116,7 +116,16 @@ COLUMN_MAPPINGS = {
             "efficiency": {
                 "default": 60,
                 "dest_col": "K"
-            }
+            },
+            "asd": {
+                "default": 1.0,
+                "dest_col": "I",
+            },
+            "fill_factor": {
+                "defalt": 1.0,
+                "dst_col": "H"
+            },
+            
         }
     }
 }

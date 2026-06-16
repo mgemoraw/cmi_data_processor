@@ -1,3 +1,5 @@
+from typing import Optional
+
 from openpyxl import load_workbook, Workbook
 from pathlib import Path
 from openpyxl.styles import (
@@ -292,6 +294,7 @@ class EquipmentProductivity:
 		source_ws,
 		target_ws,
 		allowed_cycles,
+		header_data: Optional[dict] = None
 	):
 		"""
 		Split MPDM sheet based on allowed cycle numbers
@@ -306,6 +309,7 @@ class EquipmentProductivity:
 			for cell in source_ws[self.header_row]
 		]
 
+		
 		# Find cycle column index
 		cycle_col = headers.index(
 			"Production Cycle Number"
@@ -334,6 +338,15 @@ class EquipmentProductivity:
 						cell.number_format
 					)
 					new_cell.protection = copy(cell.protection)
+
+
+
+		target_ws['A7'] = header_data.get('date')
+		target_ws['B7'] = header_data.get("project_code")
+		target_ws['D7'] = header_data.get("unit_of_time")
+		target_ws['E7'] = header_data.get("operation")
+		target_ws['F7'] = header_data.get("equipments")
+
 
 		# --------------------------------
 		# Copy merged cells (only header area)
@@ -440,6 +453,19 @@ class EquipmentProductivity:
 		ws = workbook[self.equipment]
 		mpdm_ws = workbook['mpdm']
 
+		header_data = {
+			"date": ws['A7'],
+			"operation": ws["H7"],
+			"project_code": ws["B7"],
+			"equipments": ws['D7'],
+			"unit_of_time": "Seconds",
+		}
+
+		# record_ddate = header_data.get('date')
+		# operation = header_data.get("operation")
+		# equipments = header_data.get("equipments")
+		# unit_of_time = "Seconds"
+		# project_code = header_data.get("project_code")
 
 		# ----------------------------
 		# Read headers from row 6
@@ -542,6 +568,11 @@ class EquipmentProductivity:
 			)
 
 			# ==========================
+			# update date, project code, number of equipment types, operation/activity, and other misselaneous headers
+			# ==========================
+			
+
+			# ==========================
 			# copy daily variables to each chunk
 			# ==========================
 			new_dv_ws = workbook.create_sheet('daily_variables')
@@ -564,6 +595,7 @@ class EquipmentProductivity:
 
 					# Copy value
 					new_cell.value = cell.value
+
 
 					# Copy style
 					if cell.has_style:

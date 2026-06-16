@@ -11,7 +11,7 @@ from datetime import datetime
 from mappings import COLUMN_MAPPINGS
 
 class DataProcessingEngine:
-    def __init__(self, input_folder=None, template_path=None, logger=print, equipment=None):
+    def __init__(self, input_folder=None, template_path=None, logger=print, equipment=None, operation=None):
         self.source_path = Path(input_folder) if input_folder else Path.cwd()
         self.template_path = Path(template_path) if template_path else Path.cwd()
         self.template_mapping = {}
@@ -21,6 +21,7 @@ class DataProcessingEngine:
         self.progress_callback = None
         
         self.output_folder = os.path.join(self.source_path, "output")
+        self.operation = operation
 
         # Pattern for DD-MM-YYYY
         # self.date_pattern = r"(\d{2}-\d{2}-\d{4})"
@@ -61,6 +62,24 @@ class DataProcessingEngine:
             return count, date
         return None, None
 
+    def _extract_date(self, file_name):
+        match = re.search(self.date_pattern, file_name)
+        if match:
+            date_str = match.group(1)  # Extracts the date substring (e.g., "02-03-2014")
+            try:
+                # Convert the string to a real datetime object for accurate chronological sorting
+                # Adjust "%d-%m-%Y" if your pattern captures dates differently (e.g., "%Y-%m-%d")
+                return datetime.strptime(date_str, "%d-%m-%Y")
+            except ValueError:
+                # Handle cases where the regex matches a string that isn't a valid calendar date
+                return datetime.max
+        
+        # If no date pattern is found, return datetime.max to safely push the file to the end of the list
+        return datetime.max
+
+    def _get_number_of_equipment_types(self, file_name):
+        pass 
+    
     def sort_files_by_date(self, files):
         def extract_date_object(file_name):
             match = re.search(self.date_pattern, file_name)
@@ -141,6 +160,12 @@ class DataProcessingEngine:
                 instance_template = self.copy_template(self.template_path, date_str, data_count)
 
                 self.logger(f"✅ Copied template for file: {file}")
+
+                # extract date object from file 
+                record_date = self._extract_date(file_name=file)
+                
+                # extract equipment types
+                equipment_types = self._get_number_of_equipment_types(file)
 
                 # populate productivity and MPDM sheets in the copied template
                 source_file_path = os.path.join(self.source_path, file)
@@ -329,6 +354,7 @@ class DataProcessingEngine:
         except Exception as e:
             self.logger(f"❌ Error populating productivity: {e}")
 
+    
     def _copy_header_data(self, source_ws, template_ws, config):
         header_config = config.get("header_mappings", {})
         if not header_config:
