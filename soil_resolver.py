@@ -64,7 +64,7 @@ def normalize_text(value):
 def resolve_soil_type(raw_soil_value):
 
     normalized = normalize_text(raw_soil_value)
-    print("normalized: ", normalized)
+    # print("normalized: ", normalized)
 
     for canonical_name, aliases in SOIL_TYPE_ALIASES.items():
        
@@ -81,7 +81,7 @@ def resolve_soil_type(raw_soil_value):
 def get_fill_factor(raw_soil):
 
     soil_key = resolve_soil_type(raw_soil)
-    print("soil key:", soil_key)
+    # print("soil key:", soil_key)
 
     return FILL_FACTOR_TABLE.get(
         soil_key,

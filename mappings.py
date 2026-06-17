@@ -5,6 +5,24 @@ COLUMN_MAPPINGS = {
         "destination_sheet": "MPDM",
         "source_start_row": 7,
         "dest_start_row": 13,
+
+        "source_header_mappings": {
+            "date": "A7",
+            "project_code": "B7",
+            "operation": "E7",
+            "equipment_types": "A5",
+            'equipment': "F7",
+        },
+        "dest_header_mappings": {
+            "date": "G6",
+            "project_code": "B6",
+            "operation": "B8",
+            "equipment_types": 'D9',
+            'equipment': "B9"
+        },
+        "column_mappings": {
+
+        }
     },
     
     "truck": {
@@ -17,7 +35,22 @@ COLUMN_MAPPINGS = {
             "date": "A7",
             "project_code": "B7",
             "data_collector": "C7",
-            "number_of_equipment_types": "D7",
+            "equipment_types": "D7",
+        },
+
+        "source_header_mappings": {
+            "date": None,
+            "project_code": None,
+            "operation": None,
+            "equipment_types": None,
+            'equipment': None,
+        },
+        "dest_header_mappings": {
+            "date": "M6",
+            "project_code": "C6",
+            "operation":"B8" ,
+            "equipment_types": 'J6',
+            'equipment': "B9"
         },
 
         "column_mappings": {
@@ -31,7 +64,6 @@ COLUMN_MAPPINGS = {
             "O": "N",  # Total Cycle Time
             "Q": "M",  # Q Actual Bucket capacity
         }
-
     },
 
     "dozer": {
@@ -46,6 +78,21 @@ COLUMN_MAPPINGS = {
             "project_code": "B7",
             "data_collector": "C7",
             "number_of_equipment_types": "D7",
+        },
+
+        "source_header_mappings": {
+            "date": None,
+            "project_code": None,
+            "operation": None,
+            "equipment_types": None,
+            'equipment': None,
+        },
+        "dest_header_mappings": {
+            "date": "L6",
+            "project_code": "D6",
+            "operation": None,
+            "equipment_types": 'I6',
+            'equipment': None
         },
 
 
@@ -81,17 +128,22 @@ COLUMN_MAPPINGS = {
             "date": "A7",
             "project_code": "B7",
             "data_collector": "C7",
-            "number_of_equipment_types": "D7",
+            "equipment_types": "D7",
+        },
+
+        "source_header_mappings": {
+            "date": "A7",
+            "project_code": "B7",
+            "data_collector": "C7",
+            "equipment_types": "D7",
         },
 
         "dest_header_mappings": {
-            "equipment_date": "M6",
-            "project_code": "C6",
-            # "data_collector": "C7",
-            "number_of_equipment_types": "J6",
-            "operation": "87",
-            "equipment_type": "B9",
-            "mpdm_date": "G6",
+            "date": "M6",
+            "project_code": "D6",
+            "equipment_types": "J6",
+            "equipment": "B9",
+            "operation": "B8",
         },
 
         "column_mappings": {
