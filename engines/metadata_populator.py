@@ -1,21 +1,56 @@
 from openpyxl import Workbook, load_workbook
 from pathlib import Path 
-
+from dataclasses import dataclass
 from datetime import datetime
 import os 
 import re 
 
 
+
+
+# =====================================================================
+# DATA AGGREGATING AND ANALYSIS ENGINE COMPONENTS
+# =====================================================================
+@dataclass
+class Metadata:
+    date: str
+    project_code: str
+    operation: str
+    equipment: str  # equipment type
+    data_count: int
+    equipment_types: int # number of equipment types
+    data_collector: str # data collector name
+
+    def to_dict(self):
+        return Metadata.__dict__()
+    
+
 class MetadataPopulator:
-    def __init__(self, source_folder, equipment, logger = print):
+    def __init__(self, source_folder, equipment, logger = print, progress_callback=None):
         self.source_folder = source_folder
         self.equipment = equipment
         self.date_pattern = r"(\d{2}[-_/]\d{2}[-_/]\d{4})"
 
         self.logger = logger 
+        self.logger = logger
+        self.progress_callback = progress_callback
 
     def log(self):
         return self.logger
+
+    def _log(self, text):
+        if self.logger:
+            self.logger(text)
+        else:
+            print(text)
+
+    def _set_progress(self, val):
+        if self.progress_callback:
+            self.progress_callback(val)
+
+    def read_excel_contents(self):
+        """Standard execution hook matching your Worker class thread setup."""
+        self._process_files()
 
     def _get_date_from_filename(self, file_path):
         # self.logger(f"reading date: from {file_path}")
@@ -64,7 +99,10 @@ class MetadataPopulator:
             self.logger(f"❌ Error reading date from {file_path}: {e}")
             return None
 
-    def run(self):
+    # def run(self):
+    #     self._process_files()
+
+    def start(self):
         self._process_files()
 
 
@@ -108,9 +146,7 @@ class MetadataPopulator:
         # files = os.listdir(self.source_folder)
         total_files = self.list_excel_files()
 
-        metadata = {
-                                
-        }
+        metadata = { }
             
     
         for index, file in enumerate(files):
@@ -186,5 +222,7 @@ if __name__ == "__main__":
         source_folder=source_folder,
         equipment=equipment
     )
-    mp.run()
+    mp.start()
 
+
+   

@@ -437,7 +437,7 @@ class CMIDataProcessorGUI(QWidget):
             user_particular = self.particular_field.text().strip()
             user_activity = self.activity_field.text().strip()
             
-            from analysis_engine import AnalysisEngine
+            from data_processor_gui import AnalysisEngine
 
             self.engine = AnalysisEngine(
                 data_folder=input_folder,
